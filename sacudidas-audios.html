@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sacude para Audio 🗣️</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+            text-align: center;
+        }
+        #status-box {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #audio-info {
+            font-size: 1.2em;
+            color: #007bff;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        #action-log {
+            font-size: 0.9em;
+            color: #555;
+            min-height: 50px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            color: white;
+            background-color: #28a745;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .warning {
+            color: #dc3545;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-box">
+        <h1>Control de Audio por Movimiento</h1>
+        <p>Presiona el botón para solicitar permiso y comenzar a usar el sensor.</p>
+        
+        <button id="permission-button">Solicitar Permiso y Empezar</button>
+
+        <p id="audio-info">Cargando...</p>
+        <p><strong>Última Acción:</strong></p>
+        <div id="action-log">Esperando movimiento...</div>
+
+        <p class="warning">
+            ⚠️ **Importante:** Esta página debe cargarse en un **contexto seguro (HTTPS)** y requiere que el navegador sea compatible con la `LinearAccelerationSensor` API.
+        </p>
+    </div>
+
+    <audio id="audio-player"></audio>
+
+    <script>
+        // 1. Configuración de Audios
+        const audioFiles = [
+            'audio01.mp3',
+            'audio02.mp3',
+            'audio03.mp3',
+            'audio04.mp3',
+            'audio05.mp3'
+        ];
+        
+        let currentAudioIndex = 0;
+        const audioPlayer = document.getElementById('audio-player');
+        const audioInfo = document.getElementById('audio-info');
+        const actionLog = document.getElementById('action-log');
+        const permissionButton = document.getElementById('permission-button');
+
+        // 2. Configuración de Sensores y Detección de Sacudidas
+        const SHAKE_THRESHOLD = 15; // Aceleración mínima en m/s² para considerarse una sacudida
+        const DEBOUNCE_DELAY = 1000; // 1000ms (1 segundo) de espera entre detecciones
+        let lastShakeTime = 0;
+        let sensor = null;
+
+        /** Actualiza la fuente de audio y reproduce. */
+        function playCurrentAudio() {
+            const fileName = audioFiles[currentAudioIndex];
+            audioPlayer.src = fileName;
+            audioPlayer.play().catch(e => {
+                actionLog.textContent = `Error al intentar reproducir audio: ${e.message}`;
+            });
+            audioInfo.textContent = `Reproduciendo: ${fileName}`;
+            actionLog.textContent = `▶️ Audio Actual Reproducido: ${fileName}`;
+        }
+
+        /** Pasa al siguiente audio de la lista. */
+        function nextAudio() {
+            currentAudioIndex = (currentAudioIndex + 1) % audioFiles.length; // Cicla al inicio
+            actionLog.textContent = `⏩ Cambiando al siguiente audio...`;
+            playCurrentAudio();
+        }
+
+        /**
+         * Lógica principal de detección de movimiento
+         * @param {number} x Aceleración lineal en eje X (lateral)
+         * @param {number} y Aceleración lineal en eje Y (frontal/trasera)
+         */
+        function handleShake(x, y) {
+            const now = Date.now();
+            
+            // Aplicar Debounce para evitar múltiples disparos por una sola sacudida
+            if (now - lastShakeTime < DEBOUNCE_DELAY) {
+                return;
+            }
+
+            // Sacudida Lateral (Eje X: Izquierda-Derecha)
+            // Lógica: Si el valor absoluto en X supera el umbral Y Y es el dominante
+            if (Math.abs(x) > SHAKE_THRESHOLD && Math.abs(x) > Math.abs(y) * 1.5) {
+                lastShakeTime = now;
+                actionLog.textContent = `🔄 Sacudida Lateral Detectada (X: ${x.toFixed(2)}). Repitiendo audio...`;
+                audioPlayer.currentTime = 0; // Reinicia el audio
+                audioPlayer.play();
+                return;
+            }
+
+            // Sacudida Frontal (Eje Y: Adelante-Atrás)
+            // Lógica: Si el valor absoluto en Y supera el umbral Y Y es el dominante
+            if (Math.abs(y) > SHAKE_THRESHOLD && Math.abs(y) > Math.abs(x) * 1.5) {
+                lastShakeTime = now;
+                actionLog.textContent = `⏭️ Sacudida Frontal Detectada (Y: ${y.toFixed(2)}). Avanzando...`;
+                nextAudio();
+            }
+        }
+        
+        /** Inicializa el sensor y solicita permisos. */
+        async function startSensor() {
+            if (!('LinearAccelerationSensor' in window)) {
+                audioInfo.textContent = '❌ ERROR: Tu navegador no soporta LinearAccelerationSensor.';
+                return;
+            }
+
+            try {
+                // 1. Solicitar Permiso (Necesario en iOS y algunos Android)
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if (permissionState !== 'granted') {
+                        audioInfo.textContent = '❌ Permiso de movimiento denegado por el usuario.';
+                        return;
+                    }
+                }
+                
+                // 2. Inicializar el Sensor
+                sensor = new LinearAccelerationSensor({ frequency: 60 }); // 60 lecturas por segundo
+                
+                sensor.addEventListener('error', event => {
+                    if (event.error.name === 'NotAllowedError') {
+                        audioInfo.textContent = '❌ Permiso denegado: Usa HTTPS y revisa los permisos del navegador.';
+                    } else if (event.error.name === 'SecurityError') {
+                         audioInfo.textContent = '❌ Seguridad: Asegúrate de estar en un contexto HTTPS.';
+                    } else {
+                        audioInfo.textContent = `❌ Error de Sensor: ${event.error.name}`;
+                    }
+                });
+
+                sensor.addEventListener('reading', () => {
+                    // event.acceleration.x, y, z o sensor.x, y, z
+                    handleShake(sensor.x, sensor.y);
+                });
+
+                sensor.start();
+                
+                // 3. Iniciar la aplicación
+                permissionButton.style.display = 'none';
+                audioInfo.textContent = '✅ Sensor Activo. ¡Comienza a sacudir!';
+                playCurrentAudio();
+
+            } catch (error) {
+                audioInfo.textContent = `❌ Error al iniciar el sensor: ${error.message}.`;
+            }
+        }
+
+        // 3. Inicialización
+        permissionButton.addEventListener('click', startSensor);
+
+        // Si el sensor no requiere un gesto de usuario para el permiso (navegadores antiguos), se puede intentar iniciar automáticamente.
+        // Pero es mejor esperar al botón para garantizar que el permiso se pida correctamente.
+        
+    </script>
+</body>
+</html>
