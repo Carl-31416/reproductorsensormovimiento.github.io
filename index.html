@@ -109,7 +109,7 @@
 
         // 2. Configuración de Sensores y Detección de Sacudidas
         const SHAKE_THRESHOLD = 15; // Aceleración mínima en m/s² para considerarse una sacudida
-        const DEBOUNCE_DELAY = 1000; // 1000ms (1 segundo) de espera entre detecciones
+        const DEBOUNCE_DELAY = 300; // 1000ms (1 segundo) de espera entre detecciones
         let lastShakeTime = 0;
         let sensor = null;
 
@@ -220,3 +220,4 @@
     </script>
 </body>
 </html>
+
