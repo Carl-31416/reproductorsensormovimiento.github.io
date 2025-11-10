@@ -76,7 +76,7 @@
         <div id="action-log">Esperando movimiento...</div>
 
         <p class="warning">
-            ⚠️ **Importante:** Esta página debe cargarse en un **contexto seguro (HTTPS)** y requiere que el navegador sea compatible con la `LinearAccelerationSensor` API.
+            <small>⚠️ **Importante:** Esta página debe cargarse en un **contexto seguro (HTTPS)** y requiere que el navegador sea compatible con la `LinearAccelerationSensor` API.</small>
         </p>
     </div>
 
@@ -85,11 +85,20 @@
     <script>
         // 1. Configuración de Audios
         const audioFiles = [
-            'audio01.mp3',
-            'audio02.mp3',
-            'audio03.mp3',
-            'audio04.mp3',
-            'audio05.mp3'
+            '29_2972.mp3',
+            '29_2973.mp3',
+            '29_2974.mp3',
+            '29_2975.mp3',
+            '29_2976.mp3',
+            '29_2977.mp3',
+            '29_2978.mp3',
+            '29_2979.mp3',
+            '29_2980.mp3',
+            '29_3561.mp3',
+            '29_3562.mp3',
+            '29_3563.mp3',
+            '29_3564.mp3',
+            '29_3565.mp3'
         ];
         
         let currentAudioIndex = 0;
@@ -107,7 +116,8 @@
         /** Actualiza la fuente de audio y reproduce. */
         function playCurrentAudio() {
             const fileName = audioFiles[currentAudioIndex];
-            audioPlayer.src = fileName;
+            // 🎯 CAMBIO CLAVE: Agregamos la ruta 'audios/'
+            audioPlayer.src = 'audio/' + fileName;
             audioPlayer.play().catch(e => {
                 actionLog.textContent = `Error al intentar reproducir audio: ${e.message}`;
             });
